@@ -392,7 +392,8 @@ def main():
 
     print(f"  Categories to test: {sorted(categories_to_test)}")
     category_names = {1: "Multi-hop", 2: "Temporal", 3: "Open-domain", 4: "Single-hop", 5: "Adversarial"}
-    print(f"  Category types: {', '.join([f'{c}:{category_names.get(c, 'Unknown')}' for c in sorted(categories_to_test)])}")
+    category_types_str = ', '.join([f"{c}:{category_names.get(c, 'Unknown')}" for c in sorted(categories_to_test)])
+    print(f"  Category types: {category_types_str}")
 
     # Show parallel mode status
     # if args.parallel:

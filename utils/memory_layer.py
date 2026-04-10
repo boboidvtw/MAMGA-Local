@@ -61,15 +61,13 @@ class BaseLLMController(ABC):
         pass
 
 class OpenAIController(BaseLLMController):
-    def __init__(self, model: str = "gpt-4", api_key: Optional[str] = None):
+    def __init__(self, model: str = "gpt-4", api_key: Optional[str] = None, base_url: str = "http://localhost:1234/v1"):
         try:
             from openai import OpenAI
             self.model = model
             if api_key is None:
-                api_key = os.getenv('OPENAI_API_KEY')
-            if api_key is None:
-                raise ValueError("OpenAI API key not found. Set OPENAI_API_KEY environment variable.")
-            self.client = OpenAI(api_key=api_key)
+                api_key = os.getenv('OPENAI_API_KEY') or "lm-studio"
+            self.client = OpenAI(api_key=api_key, base_url=base_url)
             # Track token usage across all API calls
             self.token_usage = {
                 'prompt_tokens': [],
@@ -85,17 +83,19 @@ class OpenAIController(BaseLLMController):
         if response_format.get("type") in ["json_object", "json_schema"]:
             messages.append({"role": "system", "content": "You must respond with a JSON object."})
         messages.append({"role": "user", "content": prompt})
-
+        # Use the provided response_format (LM Studio supports 'json_schema' or 'text')
+        actual_format = response_format
+        
         response = self.client.chat.completions.create(
             model=self.model,
             messages=messages,
-            response_format=response_format,
+            response_format=actual_format,
             temperature=temperature,
             max_tokens=1000
         )
 
         # Track token usage from this API call
-        if hasattr(response, 'usage'):
+        if hasattr(response, 'usage') and response.usage:
             self.token_usage['prompt_tokens'].append(response.usage.prompt_tokens)
             self.token_usage['completion_tokens'].append(response.usage.completion_tokens)
             self.token_usage['total_tokens'].append(response.usage.total_tokens)
@@ -170,9 +170,10 @@ class LLMController:
     def __init__(self, 
                  backend: Literal["openai", "ollama"] = "openai",
                  model: str = "gpt-4", 
-                 api_key: Optional[str] = None):
+                 api_key: Optional[str] = None,
+                 base_url: str = "http://localhost:1234/v1"):
         if backend == "openai":
-            self.llm = OpenAIController(model, api_key)
+            self.llm = OpenAIController(model, api_key, base_url)
         elif backend == "ollama":
             self.llm = OllamaController(model)
         else:
