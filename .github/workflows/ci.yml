@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    name: "Test — Python ${{ matrix.python-version }}"
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11"]
+
+    steps:
+      # -----------------------------------------------------------------------
+      # Checkout
+      # -----------------------------------------------------------------------
+      - uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # Python setup
+      # -----------------------------------------------------------------------
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      # -----------------------------------------------------------------------
+      # Lightweight CI dependencies
+      # Installs only what is needed to run unit tests without GPU / large models.
+      # Heavy optional deps (torch, faiss-gpu, sentence-transformers) are
+      # excluded here; tests that need them are marked @pytest.mark.slow and
+      # skipped in CI unless FULL_DEPS=true.
+      # -----------------------------------------------------------------------
+      - name: Install CI dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # Core graph / numeric stack (fast to install)
+          pip install networkx numpy scipy scikit-learn
+          # LLM / API client
+          pip install openai python-dotenv
+          # Date utilities
+          pip install python-dateutil
+          # Test runner
+          pip install pytest pytest-cov
+
+      # -----------------------------------------------------------------------
+      # Attempt optional heavy deps (non-fatal)
+      # Sentence-transformers is needed for some tests; skip gracefully if it
+      # fails (e.g. on ARM runners without a pre-built wheel).
+      # -----------------------------------------------------------------------
+      - name: Install optional deps (best-effort)
+        continue-on-error: true
+        run: |
+          pip install sentence-transformers faiss-cpu
+
+      # -----------------------------------------------------------------------
+      # Run tests — skip integration + slow markers
+      # -----------------------------------------------------------------------
+      - name: Run unit tests
+        env:
+          # Ensure no real LLM calls are made during CI
+          LLM_BACKEND: lmstudio
+          LLM_MODEL: ci-stub
+          OPENAI_API_KEY: ci-no-key
+        run: |
+          pytest tests/ \
+            -m "not slow and not integration and not llm" \
+            --tb=short \
+            --cov=memory \
+            --cov=utils \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            -q
+
+      # -----------------------------------------------------------------------
+      # Upload coverage
+      # -----------------------------------------------------------------------
+      - name: Upload coverage report
+        if: matrix.python-version == '3.11'
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+          fail_ci_if_error: false
+
+  # ---------------------------------------------------------------------------
+  # Lint (ruff — fast, zero config needed beyond defaults)
+  # ---------------------------------------------------------------------------
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Run ruff
+        run: ruff check memory/ utils/ tests/ --ignore E501,E402

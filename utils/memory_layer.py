@@ -61,13 +61,15 @@ class BaseLLMController(ABC):
         pass
 
 class OpenAIController(BaseLLMController):
-    def __init__(self, model: str = "gpt-4", api_key: Optional[str] = None, base_url: str = "http://localhost:1234/v1"):
+    def __init__(self, model: str = "gpt-4", api_key: Optional[str] = None, base_url: Optional[str] = None):
         try:
             from openai import OpenAI
             self.model = model
             if api_key is None:
                 api_key = os.getenv('OPENAI_API_KEY') or "lm-studio"
-            self.client = OpenAI(api_key=api_key, base_url=base_url)
+            # base_url priority: explicit arg > env var > LM Studio default
+            resolved_url = base_url or os.getenv('LLM_BASE_URL') or "http://localhost:1234/v1"
+            self.client = OpenAI(api_key=api_key, base_url=resolved_url)
             # Track token usage across all API calls
             self.token_usage = {
                 'prompt_tokens': [],
@@ -120,8 +122,8 @@ class OpenAIController(BaseLLMController):
 
 class OllamaController(BaseLLMController):
     def __init__(self, model: str = "llama2"):
-        from ollama import chat
         self.model = model
+        self.base_url = os.getenv('LLM_BASE_URL') or "http://localhost:11434"
     
     def _generate_empty_value(self, schema_type: str, schema_items: dict = None) -> Any:
         if schema_type == "array":
@@ -166,18 +168,33 @@ class OllamaController(BaseLLMController):
             return json.dumps(empty_response)
 
 class LLMController:
-    """LLM-based controller for memory metadata generation"""
-    def __init__(self, 
-                 backend: Literal["openai", "ollama"] = "openai",
-                 model: str = "gpt-4", 
+    """LLM-based controller for memory metadata generation.
+
+    Supported backends: "openai", "lmstudio", "ollama"
+    All defaults can be overridden via environment variables:
+        LLM_BACKEND, LLM_MODEL, LLM_BASE_URL, OPENAI_API_KEY
+    """
+    def __init__(self,
+                 backend: Optional[str] = None,
+                 model: Optional[str] = None,
                  api_key: Optional[str] = None,
-                 base_url: str = "http://localhost:1234/v1"):
-        if backend == "openai":
-            self.llm = OpenAIController(model, api_key, base_url)
-        elif backend == "ollama":
-            self.llm = OllamaController(model)
+                 base_url: Optional[str] = None):
+        resolved_backend = (backend or os.getenv('LLM_BACKEND') or 'lmstudio').lower()
+        _default_models = {
+            'openai':   'gpt-4o-mini',
+            'lmstudio': 'local-model',
+            'ollama':   'llama3',
+        }
+        resolved_model = model or os.getenv('LLM_MODEL') or _default_models.get(resolved_backend, 'local-model')
+
+        if resolved_backend in ('openai', 'lmstudio'):
+            self.llm = OpenAIController(resolved_model, api_key, base_url)
+        elif resolved_backend == 'ollama':
+            self.llm = OllamaController(resolved_model)
         else:
-            raise ValueError("Backend must be either 'openai' or 'ollama'")
+            raise ValueError(
+                f"Unknown backend '{resolved_backend}'. Choose from: openai, lmstudio, ollama"
+            )
 
 class MemoryNote:
     """Basic memory unit with metadata"""

@@ -1,15 +1,36 @@
 import argparse
 import json
+import logging
 from collections import defaultdict
 
 import numpy as np
-from openai import OpenAI
 import os
-import dotenv
 
-dotenv.load_dotenv()
+try:
+    import dotenv
+    dotenv.load_dotenv()
+except ImportError:
+    pass  # python-dotenv is optional
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Module-level client is initialised lazily to avoid crashing at import time
+# when OPENAI_API_KEY is not set (e.g. during unit tests with a local backend).
+_client = None
+
+def _get_client():
+    """Return a (cached) OpenAI client, initialised on first call."""
+    global _client
+    if _client is None:
+        from openai import OpenAI
+        _client = OpenAI(api_key=os.getenv("OPENAI_API_KEY") or "no-key")
+    return _client
+
+# Keep the old module-level name as a lazy proxy for backwards-compat callers
+# that do `from memory.llm_judge import client`.
+class _LazyClient:
+    def __getattr__(self, name):
+        return getattr(_get_client(), name)
+
+client = _LazyClient()
 
 ACCURACY_PROMPT = """
 Score the answer on a scale from 0.0 to 1.0 based on semantic correctness.

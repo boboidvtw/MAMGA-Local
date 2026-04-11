@@ -52,7 +52,7 @@ class KeywordEnricher:
             if name_lower not in self.stop_words:
                 keywords.append(name_lower)
 
-        years = re.findall(r'\b(19|20)\d{2}\b', text)
+        years = re.findall(r'\b(?:19|20)\d{2}\b', text)
         keywords.extend(years[:2])
 
         months = re.findall(r'\b(January|February|March|April|May|June|July|August|September|October|November|December)\b', text, re.IGNORECASE)
