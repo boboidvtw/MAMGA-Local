@@ -5,6 +5,7 @@ __pycache__/
 *.so
 .Python
 venv/
+.venv/
 env/
 ENV/
 
@@ -15,6 +16,8 @@ ENV/
 cache/
 locomo_trg_cache*/
 longmem_*_cache/
+mamga_cache/
+tiny_cache/
 *.cache
 *.pkl
 *.pickle
