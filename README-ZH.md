@@ -4,6 +4,7 @@
 
 [![Arxiv](https://img.shields.io/badge/Arxiv-paper-red)](https://arxiv.org/abs/2601.03236)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![CI](https://github.com/boboidvtw/MAMGA-Local/actions/workflows/ci.yml/badge.svg)](https://github.com/boboidvtw/MAMGA-Local/actions/workflows/ci.yml)
 
 ## 🎯 專案目標
 
@@ -13,14 +14,16 @@ MAMGA-Local 是對原始 [MAGMA (MAMGA)](https://github.com/FredJiang0324/MAMGA)
 
 ## ✨ 核心特性
 
-- **100% 隱私與本地化**：預設支援 `http://localhost:1234/v1` (LM Studio)，支援 0 元成本運行。
+- **彈性 LLM 後端**：只需修改一個 env var，即可在 LM Studio、Ollama 和 OpenAI 之間切換，無需修改任何程式碼。
+- **100% 隱私與本地化**：預設使用本機 `all-MiniLM-L6-v2` Embedding，所有資料均不離開本機。
+- **完整單元測試**：74 個測試覆蓋圖資料庫、時間解析、關鍵字萃取、評估指標與 LLM client 層。
+- **CI 自動化流程**：每次 push / PR 自動執行測試與 lint（GitHub Actions）。
 - **多圖譜推理 (Multi-Graph Reasoning)**：自動構建並維護四種正交關係圖譜：
   - **語意 (Semantic)**：內容相關連。
   - **時間 (Temporal)**：事件發生順序。
   - **因果 (Causal)**：行為與結果的關聯。
   - **實體 (Entity)**：跨對話的物件追蹤。
-- **混合檢索引擎**：整合了 FAISS/ChromaDB 向量檢索與 NetworkX 圖論遍歷。
-- **中文支援優化**：修復了原始脚本在中文環境下可能遇到的 f-string 編碼與格式錯誤。
+- **Bug 修復**：修正 f-string 編碼錯誤、年份 regex 擷取 bug、`llm_judge.py` import 時崩潰等問題。
 
 ## 🛠️ 安裝與設置
 
@@ -32,43 +35,100 @@ cd MAMGA-Local
 
 ### 2. 環境配置 (Python 3.9+)
 ```bash
-# 建立虛擬環境
 python -m venv venv
 source venv/bin/activate
-
-# 安裝依賴
 pip install -r requirements.txt
 ```
 
-### 3. 配置本地模型 (以 LM Studio 為例)
-1. 啟動 **LM Studio** 並載入一個模型（如 Llama 3 或 Gemma 3）。
-2. 在 **Local Server** 頁面啟動伺服器（預設為 `localhost:1234`）。
-3. 建立 `.env` 檔案：
+### 3. 配置 LLM 後端
+
+將 `.env.example` 複製為 `.env` 並填入設定：
+
 ```bash
-OPENAI_API_KEY=lm-studio
-OPENAI_BASE_URL=http://localhost:1234/v1
-MODEL_NAME=gpt-4  # 雖然這裡是寫 gpt-4，但會連向你的本地模型
+cp .env.example .env
+```
+
+#### 選項 A — LM Studio（預設）
+```env
+LLM_BACKEND=lmstudio
+LLM_MODEL=local-model        # LM Studio 中顯示的模型名稱
+# LLM_BASE_URL=http://localhost:1234/v1  # 預設值，可省略
+```
+啟動 LM Studio，載入模型，並在 Local Server 頁面開啟 port 1234。
+
+#### 選項 B — Ollama
+```env
+LLM_BACKEND=ollama
+LLM_MODEL=llama3
+# LLM_BASE_URL=http://localhost:11434  # 預設值，可省略
+```
+
+#### 選項 C — OpenAI 雲端
+```env
+LLM_BACKEND=openai
+LLM_MODEL=gpt-4o-mini
+OPENAI_API_KEY=sk-...
 ```
 
 ## 🚀 快速啟動
 
 使用 LoCoMo 數據集進行記憶構建與問答測試：
 ```bash
-# 執行測試（將自動調用本地模型進行記憶蒸餾）
 python test_fixed_memory.py --sample 0 --max-questions 5 --rebuild
 ```
 
-## 📂 文件結構
+## 🧪 執行測試
 
-- `memory/`: 核心記憶模組（圖譜構建、向量庫）。
-- `utils/memory_layer.py`: LLM 控制器（已針對本地 API 優化）。
-- `data/`: 包含預載的 LoCoMo 數據集。
-- `test_fixed_memory.py`: 主要的效能評測與演示腳本。
+```bash
+pip install pytest pytest-cov
+pytest tests/ -q
+```
+
+跳過需要外部 LLM 服務的測試：
+```bash
+pytest tests/ -m "not slow and not integration and not llm" -q
+```
+
+## 📂 專案結構
+
+```
+MAMGA-Local/
+├── memory/              # 核心記憶模組
+│   ├── llm_client.py    # LLM 後端抽象層（新增）
+│   ├── graph_db.py      # 四圖結構（時間/語意/因果/實體）
+│   ├── vector_db.py     # FAISS / NumPy 向量庫
+│   ├── memory_builder.py
+│   ├── query_engine.py
+│   └── ...
+├── utils/
+│   └── memory_layer.py  # LLMController（已改為 env var 驅動）
+├── tests/               # 單元測試套件（新增）
+│   ├── conftest.py
+│   ├── test_graph_db.py
+│   ├── test_temporal_parser.py
+│   ├── test_keyword_enrichment.py
+│   ├── test_evaluator.py
+│   └── test_llm_client.py
+├── .github/workflows/
+│   └── ci.yml           # GitHub Actions CI（新增）
+├── data/                # LoCoMo 數據集
+├── .env.example         # 完整配置說明
+└── pytest.ini
+```
 
 ## 📣 致謝與引用
 
 原始理論架構參考自論文：
 [MAGMA: A Multi-Graph based Agentic Memory Architecture for AI Agents](https://arxiv.org/abs/2601.03236)
+
+```bibtex
+@article{jiang2026magma,
+  title={MAGMA: A Multi-Graph based Agentic Memory Architecture for AI Agents},
+  author={Jiang, Dongming and Li, Yi and Li, Guanpeng and Li, Bingzhe},
+  journal={arXiv preprint arXiv:2601.03236},
+  year={2026}
+}
+```
 
 ## 📄 授權協議
 
