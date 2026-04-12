@@ -9,8 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 - **LLM auto-detection extracted to standalone package.** `utils/llm_detector.py`
   and `tests/test_llm_detector.py` have been moved to a separate, reusable
-  project: [boboidvtw/local-llm-detector](https://github.com/boboidvtw/local-llm-detector)
-  (MIT, published as `local-llm-detector` on PyPI — pending).
+  project: [boboidvtw/local-llm-detector](https://github.com/boboidvtw/local-llm-detector) (MIT).
   MAMGA-Local now consumes it as a pinned git dependency
   (`local-llm-detector @ git+https://github.com/boboidvtw/local-llm-detector.git@v0.1.0`).
   `main.py` imports were updated from `utils.llm_detector` to `llm_detector`.
