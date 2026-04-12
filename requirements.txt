@@ -13,6 +13,9 @@ transformers>=4.30.0
 # LLM Integration
 openai>=1.0.0
 tiktoken>=0.5.0
+# Local LLM auto-detection (LM Studio / Ollama / llama.cpp / vLLM / ...)
+# Install from GitHub until published to PyPI.
+local-llm-detector @ git+https://github.com/boboidvtw/local-llm-detector.git@main
 
 # Utilities
 python-dotenv>=1.0.0

@@ -5,7 +5,8 @@ MAMGA-Local :: main CLI
 Rewritten 2026-04-11 to:
   1. Use MemoryBuilder / QueryEngine with the correct (current) signatures.
   2. Auto-detect a running local LLM platform (LM Studio / Ollama / llama.cpp /
-     vLLM / TGW / LocalAI / KoboldCpp / Jan) via `utils.llm_detector`.
+     vLLM / TGW / LocalAI / KoboldCpp / Jan) via the `local-llm-detector` package
+     (https://github.com/boboidvtw/local-llm-detector).
   3. Work out of the box with a LoCoMo-format dataset (data/locomo10.json).
 
 Modes
@@ -40,7 +41,7 @@ os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # Project-internal imports (deferred heavy ones are inside command handlers).
-from utils.llm_detector import LLMConfig, LLMPlatform, auto_configure, describe
+from llm_detector import LLMConfig, LLMPlatform, auto_configure, describe
 
 logger = logging.getLogger("mamga.main")
 
