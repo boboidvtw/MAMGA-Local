@@ -8,7 +8,6 @@ Tests cover:
 - OllamaClient handles network errors gracefully
 - OpenAICompatibleClient delegates to underlying SDK correctly (mocked)
 """
-import os
 import pytest
 from unittest.mock import MagicMock, patch
 

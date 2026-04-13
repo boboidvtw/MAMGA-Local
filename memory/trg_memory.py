@@ -115,7 +115,6 @@ class TemporalResonanceGraphMemory:
                 # Get API key from environment for OpenAI
                 api_key = None
                 if llm_backend == 'openai':
-                    import os
                     api_key = os.getenv('OPENAI_API_KEY')
 
                 self.llm_controller = LLMController(

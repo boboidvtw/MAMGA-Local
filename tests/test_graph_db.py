@@ -17,7 +17,6 @@ from memory.graph_db import (
     Link,
     NodeType,
     LinkType,
-    LinkSubType,
 )
 
 
