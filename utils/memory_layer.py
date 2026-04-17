@@ -80,18 +80,19 @@ class OpenAIController(BaseLLMController):
             raise ImportError("OpenAI package not found. Install it with: pip install openai")
 
     def get_completion(self, prompt: str, response_format: dict, temperature: float = 0.7) -> str:
-        # Only require JSON if the format is JSON
+        # Build messages
         messages = []
-        if response_format.get("type") in ["json_object", "json_schema"]:
-            messages.append({"role": "system", "content": "You must respond with a JSON object."})
-        messages.append({"role": "user", "content": prompt})
-        # Use the provided response_format (LM Studio supports 'json_schema' or 'text')
-        actual_format = response_format
         
+        # Force JSON instruction for all requests that originally requested JSON
+        if response_format and response_format.get("type") in ["json_object", "json_schema"]:
+            messages.append({"role": "system", "content": "You must respond with a JSON object."})
+            
+        messages.append({"role": "user", "content": prompt})
+
+        # Call API WITHOUT response_format for maximum local LLM compatibility
         response = self.client.chat.completions.create(
             model=self.model,
             messages=messages,
-            response_format=actual_format,
             temperature=temperature,
             max_tokens=1000
         )

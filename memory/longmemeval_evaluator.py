@@ -23,7 +23,10 @@ class LongMemEvalEvaluator:
             model: Model used for evaluation
         """
         self.model = model
-        self.client = OpenAI()
+        self.client = OpenAI(
+            api_key=os.getenv("OPENAI_API_KEY") or "lm-studio",
+            base_url=os.getenv("OPENAI_BASE_URL") or "http://localhost:1234/v1"
+        )
 
         # Evaluation prompt templates based on LongMemEval standards
         self.TEMPORAL_REASONING_PROMPT = """

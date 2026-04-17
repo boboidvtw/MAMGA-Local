@@ -50,7 +50,6 @@ logger = logging.getLogger("mamga.main")
 # Helpers                                                                     #
 # --------------------------------------------------------------------------- #
 
-
 def _configure_logging(verbose: bool) -> None:
     logging.basicConfig(
         level=logging.DEBUG if verbose else logging.INFO,

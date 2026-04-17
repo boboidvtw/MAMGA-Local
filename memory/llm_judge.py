@@ -21,11 +21,13 @@ def _get_client():
     global _client
     if _client is None:
         from openai import OpenAI
-        _client = OpenAI(api_key=os.getenv("OPENAI_API_KEY") or "no-key")
+        _client = OpenAI(
+            api_key=os.getenv("OPENAI_API_KEY") or "lm-studio",
+            base_url=os.getenv("OPENAI_BASE_URL") or "http://localhost:1234/v1"
+        )
     return _client
 
 # Keep the old module-level name as a lazy proxy for backwards-compat callers
-# that do `from memory.llm_judge import client`.
 class _LazyClient:
     def __getattr__(self, name):
         return getattr(_get_client(), name)
@@ -167,7 +169,6 @@ def evaluate_llm_judge(question, gold_answer, generated_answer):
                 ),
             }
         ],
-        response_format={"type": "json_object"},
         temperature=0.0,
     )
     result = json.loads(response.choices[0].message.content)

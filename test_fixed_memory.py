@@ -129,7 +129,7 @@ def score_only_mode(args):
         bleu1_scores = [r['metrics']['bleu1'] for r in updated_results if r.get('metrics') and 'bleu1' in r['metrics']]
         avg_bleu1 = sum(bleu1_scores) / len(bleu1_scores) * 100 if bleu1_scores else 0
 
-        llm_scores = [r['llm_judge_score'] for r in updated_results if r.get('llm_judge_score', 0) >= 0]
+        llm_scores = [r.get('llm_judge_score', 0) for r in updated_results if 'llm_judge_score' in r]
         avg_llm_score = sum(llm_scores) / len(llm_scores) * 100 if llm_scores else 0
 
         results_no_cat5 = [r for r in updated_results if r.get('category') != 5]
@@ -138,7 +138,7 @@ def score_only_mode(args):
             correct_no_cat5 = sum(1 for r in results_no_cat5 if r['correct'])
             f1_no_cat5 = sum(r['metrics']['f1'] for r in results_no_cat5 if r.get('metrics')) / total_no_cat5 * 100
             bleu1_no_cat5 = sum(r['metrics']['bleu1'] for r in results_no_cat5 if r.get('metrics')) / total_no_cat5 * 100
-            llm_no_cat5 = sum(r['llm_judge_score'] for r in results_no_cat5 if r.get('llm_judge_score', 0) >= 0) / total_no_cat5 * 100
+            llm_no_cat5 = sum(r.get('llm_judge_score', 0) for r in results_no_cat5 if 'llm_judge_score' in r) / total_no_cat5 * 100 if total_no_cat5 > 0 else 0
         else:
             total_no_cat5 = correct_no_cat5 = f1_no_cat5 = bleu1_no_cat5 = llm_no_cat5 = 0
 
@@ -151,8 +151,8 @@ def score_only_mode(args):
             if r.get('metrics'):
                 category_stats[cat]['f1'].append(r['metrics'].get('f1', 0))
                 category_stats[cat]['bleu1'].append(r['metrics'].get('bleu1', 0))
-            if r.get('llm_judge_score', 0) >= 0:
-                category_stats[cat]['llm'].append(r['llm_judge_score'])
+            if 'llm_judge_score' in r:
+                category_stats[cat]['llm'].append(r.get('llm_judge_score', 0))
 
         print(f"\n{'='*70}")
         print(f"Sample {sample_id} Re-scored Results (All Categories):")
@@ -538,7 +538,7 @@ def main():
         bleu1_scores = [r['metrics']['bleu1'] for r in results if r.get('metrics') and 'bleu1' in r['metrics']]
         avg_bleu1 = sum(bleu1_scores) / len(bleu1_scores) * 100 if bleu1_scores else 0
 
-        llm_scores = [r['llm_judge_score'] for r in results if r.get('llm_judge_score', 0) >= 0]
+        llm_scores = [r.get('llm_judge_score', 0) for r in results if 'llm_judge_score' in r]
         avg_llm_score = sum(llm_scores) / len(llm_scores) * 100 if llm_scores else 0
 
         # Calculate scores WITHOUT Category 5
@@ -548,7 +548,7 @@ def main():
             correct_no_cat5 = sum(1 for r in results_no_cat5 if r['correct'])
             f1_no_cat5 = sum(r['metrics']['f1'] for r in results_no_cat5 if r.get('metrics')) / total_no_cat5 * 100
             bleu1_no_cat5 = sum(r['metrics']['bleu1'] for r in results_no_cat5 if r.get('metrics')) / total_no_cat5 * 100
-            llm_no_cat5 = sum(r['llm_judge_score'] for r in results_no_cat5 if r.get('llm_judge_score', 0) >= 0) / total_no_cat5 * 100
+            llm_no_cat5 = sum(r.get('llm_judge_score', 0) for r in results_no_cat5 if 'llm_judge_score' in r) / total_no_cat5 * 100 if total_no_cat5 > 0 else 0
         else:
             total_no_cat5 = correct_no_cat5 = f1_no_cat5 = bleu1_no_cat5 = llm_no_cat5 = 0
 
@@ -562,8 +562,8 @@ def main():
             if r.get('metrics'):
                 category_stats[cat]['f1'].append(r['metrics'].get('f1', 0))
                 category_stats[cat]['bleu1'].append(r['metrics'].get('bleu1', 0))
-            if r.get('llm_judge_score', 0) >= 0:
-                category_stats[cat]['llm'].append(r['llm_judge_score'])
+            if 'llm_judge_score' in r:
+                category_stats[cat]['llm'].append(r.get('llm_judge_score', 0))
 
         # Print results for this sample
         print(f"\n{'='*70}")

@@ -151,8 +151,8 @@ class Evaluator:
                      if r.get('metrics') and 'f1' in r['metrics']]
         bleu_scores = [r['metrics']['bleu1'] for r in evaluation_results
                        if r.get('metrics') and 'bleu1' in r['metrics']]
-        llm_scores = [r['llm_judge_score'] for r in evaluation_results
-                      if r.get('llm_judge_score', 0) >= 0]
+        llm_scores = [r.get('llm_judge_score', 0) for r in evaluation_results
+                      if 'llm_judge_score' in r]
 
         stats = {
             'total': total,
@@ -192,8 +192,8 @@ class Evaluator:
                 category_stats[cat]['f1'].append(r['metrics'].get('f1', 0))
                 category_stats[cat]['bleu1'].append(r['metrics'].get('bleu1', 0))
 
-            if r.get('llm_judge_score', 0) >= 0:
-                category_stats[cat]['llm'].append(r['llm_judge_score'])
+            if 'llm_judge_score' in r:
+                category_stats[cat]['llm'].append(r.get('llm_judge_score', 0))
 
         result = {}
         for cat, stats in category_stats.items():
