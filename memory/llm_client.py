@@ -3,7 +3,8 @@ LLM Client Abstraction Layer
 ----------------------------
 Provides a unified interface for multiple LLM backends:
   - openai   : OpenAI cloud API
-  - lmstudio : LM Studio local server (OpenAI-compatible)
+  - lmstudio : LM Studio local server (OpenAI-compatible, port 1234)
+  - llamacpp : llama.cpp llama-server (OpenAI-compatible, port 8080)
   - ollama   : Ollama local inference
 
 All configuration is driven by environment variables so no
@@ -226,7 +227,7 @@ def create_llm_client(
       2. Environment variables
 
     Environment variables:
-      LLM_BACKEND   : "openai" | "lmstudio" | "ollama"  (default: "lmstudio")
+      LLM_BACKEND   : "openai" | "lmstudio" | "llamacpp" | "ollama"  (default: "lmstudio")
       LLM_MODEL     : model name  (default varies by backend)
       LLM_BASE_URL  : override endpoint URL
       OPENAI_API_KEY: API key for openai backend
@@ -235,6 +236,9 @@ def create_llm_client(
 
         # Use LM Studio running on the default port
         client = create_llm_client()
+
+        # Use llama.cpp llama-server running on port 8080
+        client = create_llm_client(backend="llamacpp", model="local-model")
 
         # Use OpenAI cloud
         client = create_llm_client(backend="openai", model="gpt-4o-mini")
@@ -248,6 +252,7 @@ def create_llm_client(
     _defaults: Dict[str, str] = {
         "openai":    "gpt-4o-mini",
         "lmstudio":  "local-model",
+        "llamacpp":  "local-model",
         "ollama":    "llama3",
     }
     resolved_model = model or os.getenv("LLM_MODEL") or _defaults.get(resolved_backend, "local-model")
@@ -269,10 +274,20 @@ def create_llm_client(
             base_url=url,
         )
 
+    if resolved_backend == "llamacpp":
+        # llama-server exposes an OpenAI-compatible API on port 8080 by default.
+        # Start with: llama-server -m /path/to/model.gguf --port 8080
+        url = resolved_base_url or "http://localhost:8080/v1"
+        return OpenAICompatibleClient(
+            model=resolved_model,
+            api_key="no-key",  # llama-server does not require auth by default
+            base_url=url,
+        )
+
     if resolved_backend == "ollama":
         return OllamaClient(model=resolved_model, base_url=resolved_base_url)
 
     raise ValueError(
         f"Unknown LLM backend: '{resolved_backend}'. "
-        "Choose from: openai, lmstudio, ollama"
+        "Choose from: openai, lmstudio, llamacpp, ollama"
     )

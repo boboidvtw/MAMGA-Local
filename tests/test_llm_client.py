@@ -18,6 +18,21 @@ from memory.llm_client import (
     LLMClient,
 )
 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _make_openai_compatible_client(model: str = "test-model") -> OpenAICompatibleClient:
+    """Construct an OpenAICompatibleClient without touching the real openai SDK."""
+    client = OpenAICompatibleClient.__new__(OpenAICompatibleClient)
+    client.model = model
+    mock_resp = MagicMock()
+    mock_resp.choices[0].message.content = "Hello from mock"
+    mock_openai_inner = MagicMock()
+    mock_openai_inner.chat.completions.create.return_value = mock_resp
+    client._client = mock_openai_inner
+    return client
+
 
 # ---------------------------------------------------------------------------
 # Factory
@@ -36,6 +51,10 @@ class TestCreateLLMClient:
         client = create_llm_client(backend="ollama", model="llama3")
         assert isinstance(client, OllamaClient)
 
+    def test_llamacpp_backend_returns_openai_compatible(self):
+        client = create_llm_client(backend="llamacpp", model="local-model")
+        assert isinstance(client, OpenAICompatibleClient)
+
     def test_unknown_backend_raises_value_error(self):
         with pytest.raises(ValueError, match="Unknown LLM backend"):
             create_llm_client(backend="nonexistent")
@@ -47,6 +66,12 @@ class TestCreateLLMClient:
         assert isinstance(client, OllamaClient)
         assert client.model == "mistral"
 
+    def test_env_var_selects_llamacpp(self, monkeypatch):
+        monkeypatch.setenv("LLM_BACKEND", "llamacpp")
+        monkeypatch.setenv("LLM_MODEL", "local-model")
+        client = create_llm_client()
+        assert isinstance(client, OpenAICompatibleClient)
+
     def test_env_var_base_url_used_for_lmstudio(self, monkeypatch):
         monkeypatch.setenv("LLM_BACKEND", "lmstudio")
         monkeypatch.setenv("LLM_BASE_URL", "http://127.0.0.1:9999/v1")
@@ -55,8 +80,14 @@ class TestCreateLLMClient:
         client = create_llm_client()
         assert isinstance(client, OpenAICompatibleClient)
 
+    def test_env_var_base_url_used_for_llamacpp(self, monkeypatch):
+        monkeypatch.setenv("LLM_BACKEND", "llamacpp")
+        monkeypatch.setenv("LLM_BASE_URL", "http://127.0.0.1:9999/v1")
+        client = create_llm_client()
+        assert isinstance(client, OpenAICompatibleClient)
+
     def test_all_client_types_are_llm_client_subclass(self):
-        for backend in ("lmstudio", "ollama"):
+        for backend in ("lmstudio", "llamacpp", "ollama"):
             client = create_llm_client(backend=backend)
             assert isinstance(client, LLMClient)
 
@@ -68,18 +99,8 @@ class TestCreateLLMClient:
 class TestOpenAICompatibleClient:
     @pytest.fixture
     def mock_openai(self):
-        """Patch the openai.OpenAI class used inside the module."""
-        with patch("memory.llm_client.OpenAICompatibleClient.__init__") as _:
-            pass
-        # We'll do a manual mock of the underlying _client instead.
-        client = OpenAICompatibleClient.__new__(OpenAICompatibleClient)
-        mock_resp = MagicMock()
-        mock_resp.choices[0].message.content = "Hello from mock"
-        mock_openai_client = MagicMock()
-        mock_openai_client.chat.completions.create.return_value = mock_resp
-        client._client = mock_openai_client
-        client.model = "test-model"
-        return client
+        """OpenAICompatibleClient with the internal SDK mocked out."""
+        return _make_openai_compatible_client()
 
     def test_complete_returns_string(self, mock_openai):
         result = mock_openai.complete("Say hello")
@@ -97,6 +118,34 @@ class TestOpenAICompatibleClient:
         r1 = mock_openai.get_completion("test")
         r2 = mock_openai.complete("test")
         assert r1 == r2
+
+
+# ---------------------------------------------------------------------------
+# llamacpp backend
+# ---------------------------------------------------------------------------
+
+class TestLlamaCppBackend:
+    """llama-server speaks the OpenAI-compatible protocol → OpenAICompatibleClient."""
+
+    def test_llamacpp_default_port_is_8080(self, monkeypatch):
+        """Factory should wire the default llamacpp endpoint to port 8080."""
+        monkeypatch.delenv("LLM_BASE_URL", raising=False)
+        client = create_llm_client(backend="llamacpp", model="local-model")
+        assert isinstance(client, OpenAICompatibleClient)
+        # Inspect the underlying openai client's base_url
+        assert "8080" in str(client._client.base_url)
+
+    def test_llamacpp_custom_port_via_env(self, monkeypatch):
+        monkeypatch.setenv("LLM_BASE_URL", "http://localhost:9090/v1")
+        client = create_llm_client(backend="llamacpp", model="local-model")
+        assert isinstance(client, OpenAICompatibleClient)
+        assert "9090" in str(client._client.base_url)
+
+    def test_llamacpp_complete_returns_string(self):
+        client = _make_openai_compatible_client(model="local-model")
+        result = client.complete("Hello from llama.cpp")
+        assert isinstance(result, str)
+        assert result == "Hello from mock"
 
 
 # ---------------------------------------------------------------------------
