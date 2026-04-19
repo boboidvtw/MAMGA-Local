@@ -75,8 +75,8 @@ class TemporalResonanceGraphMemory:
                  vector_db: Optional[VectorDBInterface] = None,
                  encoder_model: str = 'all-MiniLM-L6-v2',
                  embedding_model: str = 'minilm',
-                 llm_backend: str = 'openai',
-                 llm_model: str = 'gpt-4o-mini',
+                 llm_backend: Optional[str] = None,
+                 llm_model: Optional[str] = None,
                  persist_dir: Optional[str] = None,
                  enable_async: bool = False):
         """
@@ -86,7 +86,7 @@ class TemporalResonanceGraphMemory:
             graph_db: Graph database instance (defaults to NetworkXGraphDB)
             vector_db: Vector database instance (defaults to auto-selected)
             encoder_model: Sentence transformer model name
-            llm_backend: LLM backend ('openai' or 'ollama')
+            llm_backend: LLM backend ('openai', 'lmstudio', 'llamacpp', 'ollama'). Reads LLM_BACKEND env var if None.
             llm_model: LLM model name
             persist_dir: Directory for persistence
             enable_async: Enable async processing
@@ -109,18 +109,16 @@ class TemporalResonanceGraphMemory:
         )
 
         # Initialize LLM if available
-        self.llm_controller = None
-        if LLM_AVAILABLE and llm_backend:
-            try:
-                # Get API key from environment for OpenAI
-                api_key = None
-                if llm_backend == 'openai':
-                    api_key = os.getenv('OPENAI_API_KEY')
+        # Resolve backend/model from args → env vars → sensible defaults
+        resolved_backend = llm_backend or os.getenv('LLM_BACKEND') or 'lmstudio'
+        resolved_model   = llm_model   or os.getenv('LLM_MODEL')   or 'local-model'
 
+        self.llm_controller = None
+        if LLM_AVAILABLE:
+            try:
                 self.llm_controller = LLMController(
-                    backend=llm_backend,
-                    model=llm_model,
-                    api_key=api_key
+                    backend=resolved_backend,
+                    model=resolved_model,
                 )
             except Exception as e:
                 logging.warning(f"Failed to initialize LLM controller: {e}")

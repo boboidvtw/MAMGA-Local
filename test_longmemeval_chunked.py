@@ -63,15 +63,10 @@ class ChunkedLongMemEvalTester:
         self.use_episodes = use_episodes
         self.memory_level = memory_level
 
-        # Initialize LLM controller
-        api_key = os.getenv('OPENAI_API_KEY')
-        if not api_key:
-            raise ValueError("OPENAI_API_KEY not found in environment")
-
+        # Initialize LLM controller — backend resolved from LLM_BACKEND env var
         self.llm_controller = LLMController(
-            backend='openai',
+            backend=None,   # reads LLM_BACKEND; supports openai/lmstudio/llamacpp/ollama
             model=model,
-            api_key=api_key
         )
 
         # Initialize evaluator
@@ -2155,7 +2150,8 @@ def main():
     parser = argparse.ArgumentParser(description="Chunked LongMemEval Test with Improved Retrieval")
     parser.add_argument('--dataset', type=str, required=True, help='Path to dataset')
     parser.add_argument('--max-questions', type=int, default=None)
-    parser.add_argument('--model', type=str, default='gpt-4o-mini')
+    parser.add_argument('--model', type=str, default=os.environ.get('LLM_MODEL', 'local-model'),
+                        help="LLM model name. Reads LLM_MODEL env var if not specified.")
     parser.add_argument('--embedding-model', type=str, default='minilm', choices=['minilm', 'openai'])
     parser.add_argument('--chunk-size', type=int, default=4, help='Number of turns per chunk')
     parser.add_argument('--use-episodes', action='store_true', help='Use episode-based memory')

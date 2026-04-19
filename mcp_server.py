@@ -23,8 +23,8 @@ def get_system():
         # We still use TRGSystem to get initialized LLM controller and configs,
         # but we will use the trg_memory instance directly for tools.
         _system = TRGSystem(
-            model="gpt-4o-mini",
-            embedding_model="minilm",
+            model=os.getenv("LLM_MODEL", "local-model"),
+            embedding_model=os.getenv("DEFAULT_EMBEDDING_MODEL", "minilm"),
             cache_dir=str(Path(__file__).parent / "cache")
         )
         try:

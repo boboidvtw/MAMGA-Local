@@ -171,9 +171,13 @@ class OllamaController(BaseLLMController):
 class LLMController:
     """LLM-based controller for memory metadata generation.
 
-    Supported backends: "openai", "lmstudio", "ollama"
+    Supported backends: "openai", "lmstudio", "llamacpp", "ollama"
     All defaults can be overridden via environment variables:
         LLM_BACKEND, LLM_MODEL, LLM_BASE_URL, OPENAI_API_KEY
+
+    llama.cpp notes:
+        Start the server with: llama-server -m /path/to/model.gguf --port 8080
+        Default endpoint: http://localhost:8080/v1
     """
     def __init__(self,
                  backend: Optional[str] = None,
@@ -184,17 +188,22 @@ class LLMController:
         _default_models = {
             'openai':   'gpt-4o-mini',
             'lmstudio': 'local-model',
+            'llamacpp': 'local-model',
             'ollama':   'llama3',
         }
         resolved_model = model or os.getenv('LLM_MODEL') or _default_models.get(resolved_backend, 'local-model')
 
         if resolved_backend in ('openai', 'lmstudio'):
             self.llm = OpenAIController(resolved_model, api_key, base_url)
+        elif resolved_backend == 'llamacpp':
+            # llama-server exposes an OpenAI-compatible API; default port 8080
+            resolved_url = base_url or os.getenv('LLM_BASE_URL') or 'http://localhost:8080/v1'
+            self.llm = OpenAIController(resolved_model, api_key or 'no-key', resolved_url)
         elif resolved_backend == 'ollama':
             self.llm = OllamaController(resolved_model)
         else:
             raise ValueError(
-                f"Unknown backend '{resolved_backend}'. Choose from: openai, lmstudio, ollama"
+                f"Unknown backend '{resolved_backend}'. Choose from: openai, lmstudio, llamacpp, ollama"
             )
 
 class MemoryNote:

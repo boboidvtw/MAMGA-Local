@@ -17,13 +17,22 @@ except ImportError:
 _client = None
 
 def _get_client():
-    """Return a (cached) OpenAI client, initialised on first call."""
+    """Return a (cached) OpenAI-compatible client, initialised on first call.
+
+    Respects the same env vars as the rest of MAMGA-Local:
+      LLM_BASE_URL  — server endpoint (default: LM Studio port 1234)
+      OPENAI_API_KEY — only required for the real OpenAI cloud backend
+    """
     global _client
     if _client is None:
         from openai import OpenAI
         _client = OpenAI(
-            api_key=os.getenv("OPENAI_API_KEY") or "lm-studio",
-            base_url=os.getenv("OPENAI_BASE_URL") or "http://localhost:1234/v1"
+            api_key=os.getenv("OPENAI_API_KEY") or "no-key",
+            base_url=(
+                os.getenv("LLM_BASE_URL")
+                or os.getenv("OPENAI_BASE_URL")   # backwards-compat alias
+                or "http://localhost:1234/v1"
+            ),
         )
     return _client
 
@@ -156,7 +165,7 @@ def evaluate_llm_judge(question, gold_answer, generated_answer):
         float: Score between 0.0 and 1.0 representing semantic correctness
     """
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model=os.getenv("LLM_MODEL", "gpt-4o-mini"),
         messages=[
             {
                 "role": "system",

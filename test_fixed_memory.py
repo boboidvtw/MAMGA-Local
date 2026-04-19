@@ -51,15 +51,9 @@ def score_only_mode(args):
     print("  SCORE-ONLY MODE: Re-evaluating existing results")
     print("="*70)
 
-    api_key = os.getenv('OPENAI_API_KEY')
-    if not api_key:
-        print("Error: OPENAI_API_KEY not found. Cannot perform LLM-based evaluation.")
-        return 1
-
     llm_controller = LLMController(
-        backend='openai',
+        backend=None,   # reads LLM_BACKEND env var; supports openai/lmstudio/llamacpp/ollama
         model=args.model,
-        api_key=api_key
     )
 
     evaluator = Evaluator(llm_controller=llm_controller, use_llm_judge=True)
@@ -342,8 +336,8 @@ def main():
     parser.add_argument("--max-questions", type=int, default=50)
     parser.add_argument("--cache-dir", default="./locomo_trg_fixed")
     parser.add_argument("--rebuild", action="store_true", help="Force rebuild memory")
-    parser.add_argument("--model", type=str, default="gpt-4o-mini",
-                       help="OpenAI model to use (e.g., gpt-4o-mini, gpt-4.1-mini, gpt-3.5-turbo, gpt-4o)")
+    parser.add_argument("--model", type=str, default=os.environ.get("LLM_MODEL", "local-model"),
+                       help="LLM model name. For local backends any string works; for OpenAI use e.g. gpt-4o-mini")
     parser.add_argument("--embedding-model", type=str, default="minilm",
                        choices=["minilm", "openai"],
                        help="Embedding model to use: 'minilm' (all-MiniLM-L6-v2, 384-dim) or 'openai' (text-embedding-3-small, 1536-dim)")

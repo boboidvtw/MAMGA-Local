@@ -33,7 +33,7 @@ class MemoryBuilder:
     def __init__(
         self,
         cache_dir: str,
-        llm_model: str = "gpt-4o-mini",
+        llm_model: Optional[str] = None,
         use_episodes: bool = False,
         embedding_model: str = "minilm"
     ):
@@ -42,7 +42,8 @@ class MemoryBuilder:
 
         Args:
             cache_dir: Directory for caching memory
-            llm_model: LLM model name (e.g., "gpt-4o-mini", "gpt-4o")
+            llm_model: LLM model name. Reads LLM_MODEL env var if None.
+                       For local backends (lmstudio, llamacpp) any string works.
             use_episodes: Whether to use episode-based segmentation
         """
         import os
@@ -51,34 +52,34 @@ class MemoryBuilder:
         from utils.memory_layer import LLMController
         from .answer_formatter import AnswerFormatter
 
+        # Resolve backend / model from env vars so any backend works without code changes
+        llm_backend = os.getenv('LLM_BACKEND', 'lmstudio')
+        llm_model   = llm_model or os.getenv('LLM_MODEL') or 'local-model'
+
         self.cache_dir = Path(cache_dir)
         self.llm_model = llm_model
         self.use_episodes = use_episodes
         self.embedding_model = embedding_model
 
         self.trg = TemporalResonanceGraphMemory(
-            llm_backend='openai',
+            llm_backend=llm_backend,
             llm_model=llm_model,
             enable_async=False,
             persist_dir=str(self.cache_dir),
             embedding_model=embedding_model
         )
 
-        api_key = os.getenv('OPENAI_API_KEY')
+        # Create LLMController for all backends — OpenAI key only matters for 'openai' backend
         self.llm_controller = None
-        if api_key:
+        try:
             self.llm_controller = LLMController(
-                backend='openai',
+                backend=llm_backend,
                 model=llm_model,
-                api_key=api_key
             )
-        else:
+        except Exception as e:
             logger.warning(
-                "\n" + "="*60 +
-                "\nWARNING: OPENAI_API_KEY not set!" +
-                "\n- Using simple extraction fallback (limited accuracy)" +
-                "\n- Set OPENAI_API_KEY environment variable for better results" +
-                "\n" + "="*60
+                f"Could not initialise LLMController (backend={llm_backend}): {e}"
+                " — using simple extraction fallback (limited accuracy)"
             )
 
         self.temporal_parser = TemporalParser()
