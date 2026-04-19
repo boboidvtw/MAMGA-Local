@@ -1,4 +1,3 @@
-from ast import Str
 from typing import List, Dict, Optional, Literal, Any, Union
 import json
 from datetime import datetime
@@ -574,10 +573,10 @@ class SimpleEmbeddingRetriever:
 
 class AgenticMemorySystem:
     """Memory management system with embedding-based retrieval"""
-    def __init__(self, 
+    def __init__(self,
                  model_name: str = 'all-MiniLM-L6-v2',
-                 llm_backend: str = "openai",
-                 llm_model: str = "gpt-4o-mini",
+                 llm_backend: Optional[str] = None,
+                 llm_model: Optional[str] = None,
                  evo_threshold: int = 100,
                  api_key: Optional[str] = None):
         self.memories = {}  # id -> MemoryNote
@@ -792,8 +791,8 @@ def run_tests():
     
     memory_system = AgenticMemorySystem(
         model_name='all-MiniLM-L6-v2',
-        llm_backend='openai',
-        llm_model='gpt-4o-mini'
+        llm_backend=None,   # resolved from LLM_BACKEND env var
+        llm_model=None,     # resolved from LLM_MODEL env var
     )
     
     print("\nAdding test memories...")
